@@ -14,12 +14,47 @@ void makeMTable()
     int i = 0;
     //FOR OPcode
 
-    while (fscanf(fp, "%s %x", &a[i], &opcodes[i]) != EOF)
+    while (fscanf(fp, "%s %x", a[i], &opcodes[i]) != EOF)
     {
         i++;
     }
     fclose(fp);
     tableSize = i;
+}
+
+int negDisp(int disp)
+{
+    int binary[15];
+    int i = 0, j;
+    while (disp > 0)
+    {
+        binary[i] = disp % 2;
+        disp = disp / 2;
+        i++;
+    }
+    for (j = i; j < 12; j++)
+        binary[j] = 0;
+    i = 11;
+    for (j = 0; j <= i; j++)
+    {
+        binary[j] = binary[j] == 0 ? 1 : 0;
+    }
+    for (j = 0; j <= i; j++)
+    {
+        if (binary[j] == 1)
+            binary[j] = 0;
+        else
+        {
+            binary[j] = 1;
+            break;
+        }
+    }
+    disp = 0;
+    for (j = 0; j <= i; j++)
+    {
+        disp += binary[j] * pow(2, j);
+    }
+    return disp;
 }
 
 int inTable(char str[])
@@ -49,10 +84,10 @@ void pass2()
         // for BASE directive
         if (insLoc == 0xba)
         {
-            fscanf(intT, "%*s %s", &str);
+            fscanf(intT, "%*s %s", str);
             fprintf(objCode, "\t\tBASE\t%s\n", str);
             char s[10];
-            while (fscanf(symT, "%s %x ", &s, &base) != EOF)
+            while (fscanf(symT, "%s %x ", s, &base) != EOF)
             {
                 if (strcmp(s, str) == 0)
                     break;
@@ -64,7 +99,7 @@ void pass2()
         fprintf(objCode, "%.4x\t", insLoc);
 
         // reading Label or Mnemonic
-        fscanf(intT, "%s", &str);
+        fscanf(intT, "%s", str);
         if (strcmp(str, "RSUB") == 0)
         {
             fprintf(objCode, "\tRSUB\t\t4f0000\n");
@@ -79,7 +114,7 @@ void pass2()
                 fprintf(objCode, "%s\t", str);
 
                 // reading mnemonic
-                fscanf(intT, "%s", &str);
+                fscanf(intT, "%s", str);
             }
             else
                 fprintf(objCode, "\t");
@@ -94,7 +129,7 @@ void pass2()
         if (strcmp(str, "RESB") == 0 || strcmp(str, "RESW") == 0 || strcmp(str, "END") == 0)
         {
             // reading operand
-            fscanf(intT, "%s", &str);
+            fscanf(intT, "%s", str);
             // writing operand
             fprintf(objCode, "%s\t\n", str);
             // no machine code
@@ -114,7 +149,7 @@ void pass2()
         else if (strcmp(str, "BYTE") == 0)
         {
             // reading operand
-            fscanf(intT, "%s", &str);
+            fscanf(intT, "%s", str);
             fprintf(objCode, "%s\t", str);
             if (str[0] == 'x' || str[0] == 'X')
             {
@@ -150,7 +185,7 @@ void pass2()
         int loc = 0x0;
 
         //reading operand
-        fscanf(intT, "%s", &str);
+        fscanf(intT, "%s", str);
 
         //writing operand
         fprintf(objCode, "%s\t", str);
@@ -184,7 +219,7 @@ void pass2()
         char s[10];
         int Immediate = 1;
         int add;
-        while (fscanf(symT, "%s %x ", &s, &add) != EOF)
+        while (fscanf(symT, "%s %x ", s, &add) != EOF)
         {
             if (strcmp(s, str) == 0)
             {
@@ -193,7 +228,7 @@ void pass2()
             }
         }
         rewind(symT);
-
+        int disp;
         //for extended 4byte instruction
         if (isExtended == 1)
         {
@@ -212,7 +247,7 @@ void pass2()
             }
             else
             {
-                int disp = add - (insLoc + 0x3);
+                disp = add - (insLoc + 0x3);
                 // checking for PC relative
                 if (disp >= -2048 && disp <= 2047)
                 {
@@ -225,6 +260,11 @@ void pass2()
                     P = 0;
                     B = 1;
                 }
+                if (disp < 0)
+                {
+                    disp = negDisp(disp * -1);
+                }
+                add = disp;
             }
         }
 
